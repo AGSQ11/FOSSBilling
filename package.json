@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@symfony/webpack-encore": "5.2.0",
+    "@tailwindcss/postcss": "^4.1.14",
     "autoprefixer": "^10.4.21",
     "core-js": "3.46.0",
     "cypress": "15.4.0",
