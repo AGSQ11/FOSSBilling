@@ -7,6 +7,10 @@ src/data/cache/*
 src/vendor/*
 build
 cache
+suggestions.md
+improv_changelog.md
+checkpoint.log
+hostbill_src
 
 ### phpunit/phpunit ###
 .phpunit.result.cache

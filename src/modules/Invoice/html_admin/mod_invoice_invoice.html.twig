@@ -88,6 +88,12 @@
                         <td>{{ mf.currency_format(invoice.tax, invoice.currency) }}</td>
                     </tr>
                     {% endif %}
+                    {% if invoice.late_fee and invoice.late_fee > 0 %}
+                    <tr>
+                        <td class="text-end">{{ 'Late fee'|trans }}:</td>
+                        <td>{{ mf.currency_format(invoice.late_fee, invoice.currency) }}</td>
+                    </tr>
+                    {% endif %}
                     <tr>
                         <td class="text-end">{{ 'Total'|trans }}:</td>
                         <td>{{ mf.currency_format(invoice.total, invoice.currency) }}</td>
@@ -588,6 +594,13 @@
                         {{ invoice.taxname }} {{ invoice.taxrate }}%: {{ mf.currency_format(invoice.tax, invoice.currency) }}
                     </td>
                 </tr>
+                {% if invoice.late_fee and invoice.late_fee > 0 %}
+                <tr>
+                    <td colspan="5" class="currency">
+                        {{ 'Late fee'|trans }}: {{ mf.currency_format(invoice.late_fee, invoice.currency) }}
+                    </td>
+                </tr>
+                {% endif %}
                 <tr>
                     <td colspan="5" class="currency">
                         {{ 'Total'|trans }}: {{ mf.currency_format(invoice.total, invoice.currency) }}
@@ -653,6 +666,13 @@
                     {{ invoice.taxname }} {{ invoice.taxrate }}%: {{ mf.currency_format(invoice.tax, invoice.currency) }}
                 </td>
             </tr>
+            {% if invoice.late_fee and invoice.late_fee > 0 %}
+            <tr>
+                <td colspan="5" class="text-end fw-bold">
+                    {{ 'Late fee'|trans }}: {{ mf.currency_format(invoice.late_fee, invoice.currency) }}
+                </td>
+            </tr>
+            {% endif %}
             <tr>
                 <td colspan="5" class="text-end fw-bold">
                     Total: {{ mf.currency_format(invoice.total, invoice.currency) }}

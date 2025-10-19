@@ -61,13 +61,34 @@ For instructions on installing FOSSBilling, check out our [getting started guide
 
 🖥️ Welcome, fellow developer! 🙂
 
-First of all, thank you for your interest, and for taking your time to contribute to FOSSBilling.
+## Recent Enhancements
 
-FOSSBilling is undergoing a revival and major code update. We are making steps forward day by day but there is still a lot of work to do, and we are happy to welcome new contributors. 
+### Payment Gateway System Improvements
+FOSSBilling's payment gateway system has been significantly expanded with several new adapters:
+- **Advanced Stripe Implementation**: Multiple Stripe implementations (Payment Intents, Checkout Sessions, Sources API)
+- **Cryptocurrency Support**: Coinbase Commerce adapter for cryptocurrency payments
+- **Regional Payment Providers**: PayU for Europe/India/Africa, Razorpay for India, Alipay for China
+- **Modern Payment Solutions**: PayPal Checkout with support for Apple Pay, Google Pay, and other methods
+- **Enhanced Configuration**: Multiple implementation options and advanced features for each gateway
 
-We have a set of guidelines for those wishing to contribute to FOSSBilling, and we encourage you to take a look at them here: **[contributors' guidelines](https://github.com/FOSSBilling/FOSSBilling/blob/main/CONTRIBUTING.md)**.
+### Invoicing System Improvements
+FOSSBilling's invoicing system has been enhanced with several new features:
+- **Automated Dunning Management**: Configurable dunning cycles with different levels of notices
+- **Late Fee System**: Configurable late fees (fixed amount, percentage, or both) with grace periods
+- **Enhanced Invoice Templates**: Improved PDF and client-facing templates with additional fields
+- **Multi-Currency Support**: Better handling of currency conversions and exchange rates
+- **Advanced Tax Calculations**: Improved tax calculation based on country and state
 
-Your [pull requests](https://github.com/FOSSBilling/FOSSBilling/pulls) will be highly welcomed. If you're looking for something to start with, you can check the [open issues](https://github.com/FOSSBilling/FOSSBilling/issues) on our GitHub repository.
+### Domain Management Enhancements
+- **Domain Suggestions**: Intelligent domain suggestion system with premium pricing
+- **Bulk Domain Checking**: Ability to check availability for multiple domains at once
+- **Advanced WHOIS Lookup**: Comprehensive WHOIS information retrieval
+- **Premium Domain Pricing**: Automatic identification and pricing of premium domains
+- **Advanced Domain Search**: Comprehensive domain search capabilities
+
+These improvements bring FOSSBilling closer to the advanced features found in commercial billing solutions while maintaining its open-source nature.
+
+
 
 ## Star History
 

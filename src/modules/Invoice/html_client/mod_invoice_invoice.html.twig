@@ -235,6 +235,12 @@
                                             <td>{{ invoice.discount | money(invoice.currency) }}</td>
                                         </tr>
                                     {% endif %}
+                                    {% if invoice.late_fee and invoice.late_fee > 0 %}
+                                        <tr class="text-end">
+                                            <td>{{ 'Late fee'|trans }}</td>
+                                            <td>{{ invoice.late_fee | money(invoice.currency) }}</td>
+                                        </tr>
+                                    {% endif %}
                                     <tr class="text-end">
                                         <td><strong>{{ 'Total'|trans }}</strong></td>
                                         <td><strong>{{ invoice.total | money(invoice.currency) }}</strong></td>

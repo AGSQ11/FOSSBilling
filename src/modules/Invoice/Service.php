@@ -203,7 +203,8 @@ class Service implements InjectionAwareInterface
         $result['currency_rate'] = $row['currency_rate'];
         $result['tax'] = $tax;
         $result['subtotal'] = $total;
-        $result['total'] = $total + $tax;
+        $result['late_fee'] = $this->getLateFee($invoice);
+        $result['total'] = $total + $tax + $result['late_fee'];
         $result['status'] = $row['status'];
         $result['notes'] = $row['notes'];
         $result['text_1'] = $row['text_1'];
@@ -469,7 +470,7 @@ class Service implements InjectionAwareInterface
     {
         $table = $this->di['mod_service']('Currency');
 
-        $invoice->base_income = $table->toBaseCurrency($invoice->currency, $this->getTotal($invoice));
+        $invoice->base_income = $table->toBaseCurrency($invoice->currency, $this->getTotalWithTax($invoice));
         $invoice->base_refund = $table->toBaseCurrency($invoice->currency, $invoice->refund);
         $this->di['db']->store($invoice);
     }
@@ -629,9 +630,188 @@ class Service implements InjectionAwareInterface
         }
     }
 
+    public function getLateFee(\Model_Invoice $invoice): float
+    {
+        if ($invoice->status !== \Model_Invoice::STATUS_UNPAID || !$invoice->due_at) {
+            return 0.0;
+        }
+
+        $dueDate = new \DateTime($invoice->due_at);
+        $now = new \DateTime();
+        
+        // Calculate days overdue
+        $interval = $dueDate->diff($now);
+        $daysOverdue = $interval->days;
+        
+        // Get system settings for late fees
+        $systemService = $this->di['mod_service']('system');
+        $lateFeeType = $systemService->getParamValue('invoice_late_fee_type', 'none');
+        $lateFeeAmount = (float) $systemService->getParamValue('invoice_late_fee_amount', 0);
+        $lateFeePercent = (float) $systemService->getParamValue('invoice_late_fee_percent', 0);
+        $lateFeeGracePeriod = (int) $systemService->getParamValue('invoice_late_fee_grace_period', 0);
+        
+        // Don't apply late fees if within grace period
+        if ($daysOverdue <= $lateFeeGracePeriod) {
+            return 0.0;
+        }
+
+        if ($lateFeeType === 'fixed') {
+            return $lateFeeAmount;
+        } elseif ($lateFeeType === 'percent') {
+            $subtotal = $this->getTotal($invoice);
+            return round($subtotal * $lateFeePercent / 100, 2);
+        } elseif ($lateFeeType === 'fixed_plus_percent') {
+            $subtotal = $this->getTotal($invoice);
+            $percentAmount = $subtotal * $lateFeePercent / 100;
+            return round($lateFeeAmount + $percentAmount, 2);
+        }
+
+        return 0.0;
+    }
+
     public function getTotalWithTax(\Model_Invoice $invoice): float
     {
-        return $this->getTotal($invoice) + $this->getTax($invoice);
+        $subtotal = $this->getTotal($invoice);
+        $tax = $this->getTax($invoice);
+        $lateFee = $this->getLateFee($invoice);
+        
+        return $subtotal + $tax + $lateFee;
+    }
+
+    public function processDunningCycle(\Model_Invoice $invoice): void
+    {
+        if ($invoice->status !== \Model_Invoice::STATUS_UNPAID || !$invoice->due_at) {
+            return;
+        }
+
+        $dueDate = new \DateTime($invoice->due_at);
+        $now = new \DateTime();
+        $interval = $dueDate->diff($now);
+        $daysOverdue = $interval->days;
+
+        // Get dunning settings
+        $systemService = $this->di['mod_service']('system');
+        $dunningEnabled = $systemService->getParamValue('invoice_dunning_enabled', 0);
+        $dunningGracePeriod = (int) $systemService->getParamValue('invoice_dunning_grace_period', 0);
+        $dunningCycles = $systemService->getParamValue('invoice_dunning_cycles', '1,3,7,14,30'); // Default to days after due date
+
+        if (!$dunningEnabled || $daysOverdue <= $dunningGracePeriod) {
+            return;
+        }
+
+        // Parse dunning cycles
+        $dunningCycleDays = array_map('intval', explode(',', $dunningCycles));
+        sort($dunningCycleDays);
+
+        // Check if we need to send a dunning notice
+        $dunningSent = $invoice->reminded_at ? new \DateTime($invoice->reminded_at) : null;
+        if ($dunningSent) {
+            // If we already sent a dunning notice, check if it's time for the next one
+            $lastSentInterval = $dunningSent->diff($now);
+            if ($lastSentInterval->days < 1) {
+                // Only send one dunning notice per day
+                return;
+            }
+        }
+
+        // Check if current days overdue match any dunning cycle
+        foreach ($dunningCycleDays as $cycleDay) {
+            // Check if we're at this cycle day (or within a day range to catch it)
+            if ($daysOverdue >= $cycleDay && (!$dunningSent || $dunningSent->diff(new \DateTime())->days >= 1)) {
+                $this->sendDunningNotice($invoice, $daysOverdue);
+                break;
+            }
+        }
+    }
+
+    public function processAllDunning(): void
+    {
+        $systemService = $this->di['mod_service']('system');
+        $dunningEnabled = $systemService->getParamValue('invoice_dunning_enabled', 0);
+        
+        if (!$dunningEnabled) {
+            return;
+        }
+
+        // Get all unpaid and approved invoices
+        $sql = "SELECT id FROM invoice WHERE status = :status AND approved = 1";
+        $params = [':status' => \Model_Invoice::STATUS_UNPAID];
+        $invoices = $this->di['db']->getAll($sql, $params);
+
+        foreach ($invoices as $invoiceData) {
+            $invoice = $this->di['db']->load('Invoice', $invoiceData['id']);
+            if ($invoice instanceof \Model_Invoice) {
+                $this->processDunningCycle($invoice);
+            }
+        }
+    }
+
+    public function sendDunningNotice(\Model_Invoice $invoice, int $daysOverdue): void
+    {
+        try {
+            $invoiceData = $this->toApiArray($invoice, false);
+            $dunningLevel = $this->getDunningLevel($invoice);
+            
+            // Determine which template to use based on dunning level
+            $systemService = $this->di['mod_service']('system');
+            $dunningCycles = $systemService->getParamValue('invoice_dunning_cycles', '1,3,7,14,30');
+            $dunningCycleDays = array_map('intval', explode(',', $dunningCycles));
+            $isFinalNotice = $daysOverdue >= max($dunningCycleDays);
+            
+            $email = [];
+            $email['to_client'] = $invoice->client_id;
+            $email['invoice'] = $invoiceData;
+            $email['days_overdue'] = $daysOverdue;
+            
+            if ($isFinalNotice) {
+                $email['code'] = 'mod_invoice_final_dunning';
+            } else {
+                $email['code'] = 'mod_invoice_dunning_notice';
+            }
+            
+            $emailService = $this->di['mod_service']('Email');
+            $emailService->sendTemplate($email);
+
+            // Update reminded_at to track that we sent a dunning notice
+            $invoice->reminded_at = date('Y-m-d H:i:s');
+            $invoice->updated_at = date('Y-m-d H:i:s');
+            $this->di['db']->store($invoice);
+
+            $noticeType = $isFinalNotice ? 'FINAL' : 'DUNNING';
+            $this->di['logger']->info("{$noticeType} notice sent for invoice #{$invoice->id} ({$daysOverdue} days overdue, level {$dunningLevel})");
+        } catch (\Exception $e) {
+            error_log("Error sending dunning notice: " . $e->getMessage());
+        }
+    }
+
+    public function getDunningLevel(\Model_Invoice $invoice): int
+    {
+        if ($invoice->status !== \Model_Invoice::STATUS_UNPAID || !$invoice->due_at) {
+            return 0;
+        }
+
+        $dueDate = new \DateTime($invoice->due_at);
+        $now = new \DateTime();
+        $interval = $dueDate->diff($now);
+        $daysOverdue = $interval->days;
+
+        // Get dunning settings
+        $systemService = $this->di['mod_service']('system');
+        $dunningCycles = $systemService->getParamValue('invoice_dunning_cycles', '1,3,7,14,30');
+        $dunningCycleDays = array_map('intval', explode(',', $dunningCycles));
+        sort($dunningCycleDays);
+
+        // Find the dunning level based on days overdue
+        $level = 0;
+        foreach ($dunningCycleDays as $index => $cycleDay) {
+            if ($daysOverdue >= $cycleDay) {
+                $level = $index + 1;
+            } else {
+                break;
+            }
+        }
+
+        return $level;
     }
 
     public function getTax(\Model_Invoice $invoice): float
@@ -658,6 +838,39 @@ class Service implements InjectionAwareInterface
         }
 
         return round($taxable_subtotal * $invoice->taxrate / 100, 2);
+    }
+
+    public function getTaxForCountryState(\Model_Invoice $invoice, string $country, string $state = null): array
+    {
+        // Get tax rules based on country and state
+        $taxService = $this->di['mod_service']('Invoice', 'Tax');
+        $title = '';
+        $taxRate = $taxService->getTaxRateForCountryState($country, $state, $title);
+        
+        if ($taxRate <= 0) {
+            return [
+                'name' => $invoice->taxname,
+                'rate' => 0.0,
+                'amount' => 0.0
+            ];
+        }
+        
+        $items = $this->di['db']->find('InvoiceItem', 'invoice_id = :iid', [':iid' => $invoice->id]);
+        $taxable_subtotal = 0.0;
+        
+        foreach ($items as $item) {
+            if ($item->taxed) {
+                $taxable_subtotal += ($item->price * $item->quantity);
+            }
+        }
+        
+        $taxAmount = round($taxable_subtotal * $taxRate / 100, 2);
+        
+        return [
+            'name' => $title,
+            'rate' => $taxRate,
+            'amount' => $taxAmount
+        ];
     }
 
     public function getTotal(\Model_Invoice $invoice): float
@@ -1076,6 +1289,12 @@ class Service implements InjectionAwareInterface
         $after_due_list = $this->di['db']->getAll("SELECT id, ABS(DATEDIFF(due_at, NOW())) as days_passed FROM invoice WHERE status = 'unpaid' AND approved = 1 AND ((due_at < NOW()) OR (ABS(DATEDIFF(due_at, NOW())) = 0 ))");
         foreach ($after_due_list as $params) {
             $this->di['events_manager']->fire(['event' => 'onEventAfterInvoiceIsDue', 'params' => $params]);
+            
+            // Process dunning for this invoice
+            $invoice = $this->di['db']->load('Invoice', $params['id']);
+            if ($invoice instanceof \Model_Invoice) {
+                $this->processDunningCycle($invoice);
+            }
         }
 
         $ss->setParamValue($key, date('Y-m-d H:i:s'));

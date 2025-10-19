@@ -1,0 +1,7 @@
+{
+    "id": "reports",
+    "type": "mod",
+    "name": "Reports",
+    "description": "Advanced reporting and analytics module for FOSSBilling",
+    "version": "1.0.0"
+}

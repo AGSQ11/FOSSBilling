@@ -62,6 +62,13 @@ If you need to sell a new type of product you will implement a Service type modu
 
 Other modules extend the whole FOSSBilling API with any functionality needed. Check existing modules to get an idea of what is already shipped with the default structure of FOSSBilling.
 
+### Key Modules for Enhancement
+
+Some of the core modules that have recently received significant enhancements include:
+
+* **Invoice module**: Enhanced with automated dunning management, late fee systems, improved multi-currency support, and advanced invoice templates
+* **Servicedomain module**: Enhanced with domain suggestions, bulk availability checking, advanced WHOIS lookup, and premium domain pricing
+
 
 ## How can I contribute?
 

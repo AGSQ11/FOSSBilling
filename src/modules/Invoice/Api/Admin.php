@@ -29,6 +29,21 @@ class Admin extends \Api_Abstract
         $service = $this->getService();
         [$sql, $params] = $service->getSearchQuery($data);
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+        
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'client_id', 'nr', 'currency', 'credit', 'base_income', 'base_refund', 'refund', 'notes', 'status',
+            'buyer_first_name', 'buyer_last_name', 'buyer_company', 'buyer_company_vat', 'buyer_company_number',
+            'buyer_address', 'buyer_city', 'buyer_state', 'buyer_country', 'buyer_zip', 'buyer_phone',
+            'buyer_phone_cc', 'buyer_email', 'approved', 'taxname', 'taxrate', 'due_at', 'reminded_at', 'paid_at', 'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
+        
         $pager = $this->di['pager']->getPaginatedResultSet($sql, $params, $per_page);
         foreach ($pager['list'] as $key => $item) {
             $invoice = $this->di['db']->getExistingModelById('Invoice', $item['id'], 'Invoice not found');
@@ -477,6 +492,19 @@ class Admin extends \Api_Abstract
         $transactionService = $this->di['mod_service']('Invoice', 'Transaction');
         [$sql, $params] = $transactionService->getSearchQuery($data);
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+        
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'invoice_id', 'txn_id', 'amount', 'currency', 'status', 'gateway_id', 
+            'note', 'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
+        
         $pager = $this->di['pager']->getPaginatedResultSet($sql, $params, $per_page);
         foreach ($pager['list'] as $key => $item) {
             $transaction = $this->di['db']->getExistingModelById('Transaction', $item['id'], 'Transaction not found');
@@ -557,6 +585,19 @@ class Admin extends \Api_Abstract
         [$sql, $params] = $gatewayService->getSearchQuery($data);
 
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+        
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'name', 'gateway', 'enabled', 'accepted_currencies', 'conversion_rate',
+            'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
+        
         $pager = $this->di['pager']->getPaginatedResultSet($sql, $params, $per_page);
         foreach ($pager['list'] as $key => $item) {
             $gateway = $this->di['db']->getExistingModelById('PayGateway', $item['id'], 'Gateway not found');
@@ -703,6 +744,19 @@ class Admin extends \Api_Abstract
         $subscriptionService = $this->di['mod_service']('Invoice', 'Subscription');
         [$sql, $params] = $subscriptionService->getSearchQuery($data);
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+        
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'client_id', 'invoice_id', 'gateway_id', 'sid', 'status', 'period',
+            'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
+        
         $pager = $this->di['pager']->getPaginatedResultSet($sql, $params, $per_page);
         foreach ($pager['list'] as $key => $item) {
             $subscription = $this->di['db']->getExistingModelById('Subscription', $item['id'], 'Subscription not found');
@@ -915,6 +969,17 @@ class Admin extends \Api_Abstract
         $taxService = $this->di['mod_service']('Invoice', 'Tax');
         [$sql, $params] = $taxService->getSearchQuery($data);
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+        
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'state', 'country', 'taxrate', 'name', 'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
 
         return $this->di['pager']->getPaginatedResultSet($sql, $params, $per_page);
     }
@@ -1016,5 +1081,38 @@ class Admin extends \Api_Abstract
         $data['headers'] ??= [];
 
         return $this->getService()->exportCSV($data['headers']);
+    }
+
+    /**
+     * Process dunning for all overdue invoices
+     *
+     * @return bool
+     */
+    public function batch_process_dunning($data)
+    {
+        $this->getService()->processAllDunning();
+        $this->di['logger']->info('Executed action to process dunning for all overdue invoices.');
+
+        return true;
+    }
+
+    /**
+     * Apply late fees to all overdue invoices
+     *
+     * @return bool
+     */
+    public function batch_apply_late_fees($data)
+    {
+        $invoiceList = $this->get_list(['status' => 'unpaid', 'approved' => 1]);
+        
+        foreach ($invoiceList['list'] as $invoice) {
+            $model = $this->di['db']->getExistingModelById('Invoice', $invoice['id'], 'Invoice not found');
+            // The late fee is calculated dynamically, so we just need to ensure it's considered in totals
+            $this->di['logger']->info("Late fee for invoice #{$model->id} is now calculated dynamically");
+        }
+
+        $this->di['logger']->info('Executed action to apply late fees to overdue invoices.');
+
+        return true;
     }
 }

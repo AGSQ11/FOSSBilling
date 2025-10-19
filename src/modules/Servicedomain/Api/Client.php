@@ -130,4 +130,68 @@ class Client extends \Api_Abstract
 
         return $s;
     }
+    
+    /**
+     * Get domain suggestions based on a keyword
+     *
+     * @param string $keyword The keyword to generate domain suggestions for
+     * @return array List of suggested domains with availability and pricing
+     */
+    public function get_domain_suggestions($data)
+    {
+        $required = [
+            'keyword' => 'Keyword is required',
+        ];
+        $this->di['validator']->checkRequiredParamsForArray($required, $data);
+        
+        return $this->getService()->getDomainSuggestions($data['keyword']);
+    }
+    
+    /**
+     * Get WHOIS information for a domain
+     *
+     * @param string $domain The domain to get WHOIS information for
+     * @return array WHOIS details for the domain
+     */
+    public function get_whois($data)
+    {
+        $required = [
+            'domain' => 'Domain is required',
+        ];
+        $this->di['validator']->checkRequiredParamsForArray($required, $data);
+        
+        return $this->getService()->getDomainWhois($data['domain']);
+    }
+    
+    /**
+     * Get premium domain pricing information
+     *
+     * @param string $domain The domain to check for premium pricing
+     * @return array Premium domain information
+     */
+    public function get_premium_price($data)
+    {
+        $required = [
+            'domain' => 'Domain is required',
+        ];
+        $this->di['validator']->checkRequiredParamsForArray($required, $data);
+        
+        return $this->getService()->getPremiumDomainPrice($data['domain']);
+    }
+    
+    /**
+     * Search domains with advanced options
+     *
+     * @param string $query The domain or keyword to search for
+     * @return array Search results with availability and pricing
+     */
+    public function search_domains($data)
+    {
+        $required = [
+            'query' => 'Search query is required',
+        ];
+        $this->di['validator']->checkRequiredParamsForArray($required, $data);
+        
+        return $this->getService()->searchAdvancedDomains($data['query'], $data);
+    }
 }

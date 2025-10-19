@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 /**
  * Copyright 2022-2025 FOSSBilling
@@ -1087,7 +1087,7 @@ class Service implements \FOSSBilling\InjectionAwareInterface
         // Validate keyword format
         $validator = $this->di['validator'];
         if (!$validator->isSldValid($keyword)) {
-            throw new \FOSSBilling\InformationException('Domain keyword is invalid');
+            throw new \\FOSSBilling\\InformationException('Domain keyword is invalid');
         }
 
         // Get available TLDs

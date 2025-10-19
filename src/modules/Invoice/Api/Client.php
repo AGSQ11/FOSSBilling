@@ -28,6 +28,21 @@ class Client extends \Api_Abstract
         $data['approved'] = true;
         [$sql, $params] = $this->getService()->getSearchQuery($data);
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+        
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'client_id', 'nr', 'currency', 'credit', 'base_income', 'base_refund', 'refund', 'notes', 'status',
+            'buyer_first_name', 'buyer_last_name', 'buyer_company', 'buyer_company_vat', 'buyer_company_number',
+            'buyer_address', 'buyer_city', 'buyer_state', 'buyer_country', 'buyer_zip', 'buyer_phone',
+            'buyer_phone_cc', 'buyer_email', 'approved', 'taxname', 'taxrate', 'due_at', 'reminded_at', 'paid_at', 'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
+        
         $pager = $this->di['pager']->getPaginatedResultSet($sql, $params, $per_page);
         foreach ($pager['list'] as $key => $item) {
             $invoice = $this->di['db']->getExistingModelById('Invoice', $item['id'], 'Invoice not found');
@@ -189,6 +204,19 @@ class Client extends \Api_Abstract
         [$sql, $params] = $transactionService->getSearchQuery($data);
 
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+        
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'invoice_id', 'txn_id', 'amount', 'currency', 'status', 'gateway_id', 
+            'note', 'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
+        
         $pager = $this->di['pager']->getPaginatedResultSet($sql, $params, $per_page);
         foreach ($pager['list'] as $key => $item) {
             $transaction = $this->di['db']->getExistingModelById('Transaction', $item['id'], 'Transaction not found');

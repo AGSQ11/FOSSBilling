@@ -27,10 +27,19 @@
 		{% endif %}
 		<hr class='Rounded'>
 		<div class='InvoiceInfo'>
-			<p>{{ 'Invoice number'|trans }}: {{ invoice.serie_nr }}</p>
-			<p>{{ 'Invoice date'|trans }}: {{ invoice.created_at|format_date }}</p>
-			<p>{{ 'Due date'|trans }}: {{ invoice.due_at|format_date }}</p>
-			<p>{{ 'Invoice status'|trans }}: {{ invoice.status|capitalize }}</p>
+			<p><strong>{{ 'Invoice number'|trans }}:</strong> {{ invoice.serie_nr }}</p>
+			<p><strong>{{ 'Invoice date'|trans }}:</strong> {{ invoice.created_at|format_date }}</p>
+			<p><strong>{{ 'Due date'|trans }}:</strong> {{ invoice.due_at|format_date }}</p>
+			<p><strong>{{ 'Invoice status'|trans }}:</strong> {{ invoice.status|capitalize }}</p>
+			{% if invoice.paid_at %}
+				<p><strong>{{ 'Paid date'|trans }}:</strong> {{ invoice.paid_at|format_date }}</p>
+			{% endif %}
+			{% if invoice.late_fee and invoice.late_fee > 0 %}
+				<p><strong>{{ 'Late fee'|trans }}:</strong> {{ invoice.late_fee|money(currency_code) }}</p>
+			{% endif %}
+			{% if invoice.currency_rate and invoice.currency_rate != 1 %}
+				<p><strong>{{ 'Currency exchange rate'|trans }}:</strong> 1 {{ invoice.currency }} = {{ invoice.currency_rate }} {{ 'Base currency'|trans }}</p>
+			{% endif %}
 		</div>
 
 		<h3 class='CompanyInfo'>{{ 'Company'|trans }}</h3>
@@ -89,6 +98,12 @@
 					<tr>
 						<th style='text-align: right' colspan='3'>{{ 'Discount'|trans }}:</th>
 						<th style='text-align: right'>{{ invoice.discount|money(currency_code) }}</th>
+					</tr>
+				{% endif %}
+				{% if invoice.late_fee and invoice.late_fee > 0 %}
+					<tr>
+						<th style='text-align: right' colspan='3'>{{ 'Late fee'|trans }}:</th>
+						<th style='text-align: right'>{{ invoice.late_fee|money(currency_code) }}</th>
 					</tr>
 				{% endif %}
 				<tr>

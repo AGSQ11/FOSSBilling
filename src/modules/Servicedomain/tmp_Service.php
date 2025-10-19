@@ -1082,36 +1082,7 @@ class Service implements \FOSSBilling\InjectionAwareInterface
      * @param array $options Additional options for the lookup
      * @return array List of suggested domains with availability information
      */
-    public function getDomainSuggestions(string $keyword, array $options = []): array
-    {
-        // Validate keyword format
-        $validator = $this->di['validator'];
-        if (!$validator->isSldValid($keyword)) {
-            throw new \FOSSBilling\InformationException('Domain keyword is invalid');
-        }
-
-        // Get available TLDs
-        $tlds = $this->di['db']->find('Tld', 'active = 1');
-        $suggestions = [];
-        
-        foreach ($tlds as $tld) {
-            $domain = $keyword . $tld->tld;
-            $available = $this->isDomainAvailable($tld, $keyword);
-            $premiumInfo = $this->getPremiumDomainPrice($domain);
-            
-            $suggestions[] = [
-                'domain' => $domain,
-                'tld' => $tld->tld,
-                'available' => $available,
-                'price' => $available ? $premiumInfo['premium_price'] : 0,
-                'premium' => $premiumInfo['is_premium'],
-                'premium_price' => $premiumInfo['premium_price'],
-                'base_price' => $premiumInfo['base_price'],
-                'sld' => $keyword
-            ];
-        }
-        
-        // Sort by availability, premium status, and price
+@@@METHOD_CONTENT@@@
         usort($suggestions, function ($a, $b) {
             // Available domains first
             if ($a['available'] && !$b['available']) {
@@ -1355,6 +1326,3 @@ class Service implements \FOSSBilling\InjectionAwareInterface
         return $results;
     }
 }
-
-
-

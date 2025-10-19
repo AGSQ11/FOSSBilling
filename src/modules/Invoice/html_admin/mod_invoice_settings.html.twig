@@ -130,6 +130,84 @@
                 </div>
             </div>
             <div class="card-body">
+                <h3 class="card-title">{{ 'Late Fees Settings'|trans }}</h3>
+                <div class="mb-3 row">
+                    <label class="col-md-3 col-form-label">{{ 'Enable late fees'|trans }}</label>
+                    <div class="col-md-6">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" id="lateFeesEnabledYes" type="radio" name="invoice_late_fee_enabled" value="1"{% if params.invoice_late_fee_enabled == "1" %} checked{% endif %}>
+                            <label class="form-check-label" for="lateFeesEnabledYes">{{ 'Yes'|trans }}</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" id="lateFeesEnabledNo" type="radio" name="invoice_late_fee_enabled" value="0"{% if params.invoice_late_fee_enabled == "0" or params.invoice_late_fee_enabled is not defined %} checked{% endif %}>
+                            <label class="form-check-label" for="lateFeesEnabledNo">{{ 'No'|trans }}</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3 row">
+                    <label class="col-md-3 col-form-label">{{ 'Late fee type'|trans }}</label>
+                    <div class="col-md-6">
+                        <select class="form-control" name="invoice_late_fee_type">
+                            <option value="none" {% if params.invoice_late_fee_type == "none" or params.invoice_late_fee_type is not defined %}selected{% endif %}>{{ 'No late fees'|trans }}</option>
+                            <option value="fixed" {% if params.invoice_late_fee_type == "fixed" %}selected{% endif %}>{{ 'Fixed amount'|trans }}</option>
+                            <option value="percent" {% if params.invoice_late_fee_type == "percent" %}selected{% endif %}>{{ 'Percentage of invoice total'|trans }}</option>
+                            <option value="fixed_plus_percent" {% if params.invoice_late_fee_type == "fixed_plus_percent" %}selected{% endif %}>{{ 'Fixed amount plus percentage'|trans }}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3 row">
+                    <label class="col-md-3 col-form-label">{{ 'Late fee amount'|trans }}</label>
+                    <div class="col-md-6">
+                        <input class="form-control" type="text" name="invoice_late_fee_amount" value="{{ params.invoice_late_fee_amount|default(0) }}">
+                        <small class="form-hint">{{ 'Fixed amount to charge as a late fee'|trans }}</small>
+                    </div>
+                </div>
+                <div class="mb-3 row">
+                    <label class="col-md-3 col-form-label">{{ 'Late fee percentage'|trans }}</label>
+                    <div class="col-md-6">
+                        <input class="form-control" type="text" name="invoice_late_fee_percent" value="{{ params.invoice_late_fee_percent|default(0) }}">
+                        <small class="form-hint">{{ 'Percentage to charge as a late fee'|trans }}</small>
+                    </div>
+                </div>
+                <div class="mb-3 row">
+                    <label class="col-md-3 col-form-label">{{ 'Late fee grace period'|trans }}</label>
+                    <div class="col-md-6">
+                        <input class="form-control" type="text" name="invoice_late_fee_grace_period" value="{{ params.invoice_late_fee_grace_period|default(0) }}">
+                        <small class="form-hint">{{ 'Number of days after due date before applying late fee'|trans }}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <h3 class="card-title">{{ 'Dunning Management'|trans }}</h3>
+                <div class="mb-3 row">
+                    <label class="col-md-3 col-form-label">{{ 'Enable dunning management'|trans }}</label>
+                    <div class="col-md-6">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" id="dunningEnabledYes" type="radio" name="invoice_dunning_enabled" value="1"{% if params.invoice_dunning_enabled == "1" %} checked{% endif %}>
+                            <label class="form-check-label" for="dunningEnabledYes">{{ 'Yes'|trans }}</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" id="dunningEnabledNo" type="radio" name="invoice_dunning_enabled" value="0"{% if params.invoice_dunning_enabled == "0" or params.invoice_dunning_enabled is not defined %} checked{% endif %}>
+                            <label class="form-check-label" for="dunningEnabledNo">{{ 'No'|trans }}</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3 row">
+                    <label class="col-md-3 col-form-label">{{ 'Dunning grace period'|trans }}</label>
+                    <div class="col-md-6">
+                        <input class="form-control" type="text" name="invoice_dunning_grace_period" value="{{ params.invoice_dunning_grace_period|default(0) }}">
+                        <small class="form-hint">{{ 'Number of days after due date before starting dunning process'|trans }}</small>
+                    </div>
+                </div>
+                <div class="mb-3 row">
+                    <label class="col-md-3 col-form-label">{{ 'Dunning cycles'|trans }}</label>
+                    <div class="col-md-6">
+                        <input class="form-control" type="text" name="invoice_dunning_cycles" value="{{ params.invoice_dunning_cycles|default('1,3,7,14,30') }}">
+                        <small class="form-hint">{{ 'Comma-separated days after due date to send dunning notices (e.g., 1,3,7,14,30)'|trans }}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
                 <h3 class="card-title">{{ 'Refunds settings'|trans }}</h3>
                 <div class="mb-3 row">
                     <label class="col-md-3 col-form-label">{{ 'Refunds logic'|trans }}</label>

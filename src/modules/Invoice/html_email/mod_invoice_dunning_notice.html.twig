@@ -1,0 +1,40 @@
+{% block subject %}[{{ guest.system_company.name }}] Overdue Invoice Notice{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Overdue Invoice Notice</title>
+</head>
+<body>
+<p>Hello {{ invoice.client.first_name }} {{ invoice.client.last_name }},</p>
+
+<p>This is a friendly reminder that your invoice <strong>#{{ invoice.serie_nr }}</strong> is currently <strong>{{ days_overdue }} days overdue</strong>.</p>
+
+<p><strong>Invoice Details:</strong></p>
+<ul>
+    <li>Invoice Number: {{ invoice.serie_nr }}</li>
+    <li>Invoice Date: {{ invoice.created_at|format_date }}</li>
+    <li>Due Date: {{ invoice.due_at|format_date }}</li>
+    <li>Amount Due: {{ invoice.total|money(invoice.currency) }}</li>
+    {% if invoice.late_fee and invoice.late_fee > 0 %}
+        <li>Late Fee: {{ invoice.late_fee|money(invoice.currency) }}</li>
+    {% endif %}
+</ul>
+
+<p>Please take a moment to settle this invoice at your earliest convenience to avoid additional late fees or service interruption.</p>
+
+<p>You can view and pay your invoice by logging into your account at <a href="{{ 'invoice'|link }}/{{ invoice.hash }}">{{ 'invoice'|link }}/{{ invoice.hash }}</a>.</p>
+
+<p>If you have already sent payment, please disregard this notice. If you have any questions about this invoice, please contact us at {{ guest.system_company.email }}.</p>
+
+<p>Thank you for your business.</p>
+
+<br/>
+<br/>
+<p>Sincerely,<br/>
+{{ guest.system_company.name }}<br/>
+{{ guest.system_company.signature|nl2br|raw }}</p>
+</body>
+</html>
+{% endblock %}

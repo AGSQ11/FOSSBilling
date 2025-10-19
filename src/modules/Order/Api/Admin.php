@@ -45,6 +45,19 @@ class Admin extends \Api_Abstract
         [$sql, $params] = $this->getService()->getSearchQuery($data);
         $paginator = $this->di['pager'];
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+        
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'client_id', 'product_id', 'title', 'currency', 'service_type', 'period', 
+            'quantity', 'price', 'discount', 'status', 'reason', 'notes', 'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
+        
         $resultSet = $paginator->getPaginatedResultSet($sql, $params, $per_page);
 
         foreach ($resultSet['list'] as $key => $result) {
@@ -289,6 +302,17 @@ class Admin extends \Api_Abstract
 
         [$sql, $bindings] = $this->getService()->getOrderStatusSearchQuery($data);
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'client_order_id', 'status', 'notes', 'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
 
         return $this->di['pager']->getPaginatedResultSet($sql, $bindings, $per_page);
     }

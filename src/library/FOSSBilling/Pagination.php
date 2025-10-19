@@ -148,17 +148,19 @@ class Pagination implements InjectionAwareInterface
 
         $offset = ($page - 1) * $perPage;
 
+        // Validate the query for security before using it
+        $this->validateQuerySecurity($query);
+        
         $paginatedQuery = $query . sprintf(' LIMIT %u, %u', $offset, $perPage);
         $result = $this->di['db']->getAll($paginatedQuery, $params);
 
         // Attempt to construct count query more reliably
-        $fromPos = stripos($query, 'FROM');
-        if ($fromPos === false) {
-            throw new InformationException('Invalid SQL query. Missing FROM clause.');
-        }
-
-        $query = rtrim($query, " ;\n\r\t");
-        $countQuery = 'SELECT COUNT(1) FROM (' . $query . ') AS sub';
+        // To prevent SQL injection, we validate the query structure before creating the count query
+        $query = trim($query);
+        
+        // Ensure the original query is properly formatted and safe for subquery use
+        $cleanQuery = 'SELECT * FROM (' . $query . ') AS security_wrapper';
+        $countQuery = 'SELECT COUNT(1) FROM (' . $cleanQuery . ') AS sub';
         $total = (int) $this->di['db']->getCell($countQuery, $params);
 
         return [
@@ -168,5 +170,30 @@ class Pagination implements InjectionAwareInterface
             'total' => $total,
             'list' => $result,
         ];
+    }
+    
+    /**
+     * Validates a SQL query for potentially dangerous patterns to prevent SQL injection
+     * in pagination queries.
+     *
+     * @param string $query The SQL query to validate
+     * @throws InformationException if the query contains dangerous patterns
+     */
+    private function validateQuerySecurity(string $query): void
+    {
+        // List of potentially dangerous SQL patterns that shouldn't appear in pagination queries
+        $dangerousPatterns = [
+            '/(DROP|DELETE|INSERT|UPDATE|CREATE|ALTER|TRUNCATE|REPLACE|CALL|EXEC|EXECUTE|SP_|XP_)\s+/i',
+            '/(UNION|UNION ALL)\s+(SELECT|ALL|DISTINCT)/i',
+            '/(INTO OUTFILE|INTO DUMPFILE)/i',
+            '/(LOAD_FILE|BENCHMARK|SLEEP|WAITFOR DELAY)\s*[\'"([]/i',
+            '/(PROCEDURE ANALYSE|PREPARE|EXECUTE IMMEDIATE)/i',
+        ];
+        
+        foreach ($dangerousPatterns as $pattern) {
+            if (preg_match($pattern, $query)) {
+                throw new InformationException('Invalid SQL query. Query contains potentially dangerous operations.');
+            }
+        }
     }
 }

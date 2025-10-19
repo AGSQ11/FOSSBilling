@@ -1,0 +1,38 @@
+{% block subject %}[{{ guest.system_company.name }}] FINAL NOTICE - Overdue Invoice {{ invoice.serie_nr }}{% endblock %}
+{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Final Dunning Notice</title>
+</head>
+<body>
+<p>Dear {{ invoice.client.first_name }} {{ invoice.client.last_name }},</p>
+
+<p>This is a <strong>FINAL NOTICE</strong> regarding your invoice <strong>#{{ invoice.serie_nr }}</strong> which is currently <strong>{{ days_overdue }} days overdue</strong>.</p>
+
+<p><strong>Invoice Details:</strong></p>
+<ul>
+    <li>Invoice Number: {{ invoice.serie_nr }}</li>
+    <li>Invoice Date: {{ invoice.created_at|format_date }}</li>
+    <li>Due Date: {{ invoice.due_at|format_date }}</li>
+    <li>Amount Due: {{ invoice.total|money(invoice.currency) }}</li>
+    {% if invoice.late_fee and invoice.late_fee > 0 %}
+        <li>Late Fee: {{ invoice.late_fee|money(invoice.currency) }}</li>
+    {% endif %}
+</ul>
+
+<p><strong>IMPORTANT:</strong> If payment is not received within the next 7 days, we may need to take further action including but not limited to suspending your services and/or referring this account to a collection agency.</p>
+
+<p>Please settle this invoice immediately to avoid further action. You can view and pay your invoice by logging into your account at <a href="{{ 'invoice'|link }}/{{ invoice.hash }}">{{ 'invoice'|link }}/{{ invoice.hash }}</a>.</p>
+
+<p>If you have already sent payment, please disregard this notice. If you have any questions about this invoice or need to discuss payment arrangements, please contact us immediately at {{ guest.system_company.email }}.</p>
+
+<p>Failure to resolve this matter will result in additional consequences including possible legal action.</p>
+
+<p>Sincerely,<br/>
+{{ guest.system_company.name }}<br/>
+{{ guest.system_company.signature|nl2br|raw }}</p>
+</body>
+</html>
+{% endblock %}

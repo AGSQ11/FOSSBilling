@@ -211,6 +211,48 @@ tests-legacy/                  # Legacy PHPUnit tests
 4. **Module Development:** Understand the distinction between Service modules and Extension modules
 5. **Testing:** Write tests for new functionality using PHPUnit
 
+## Knowledge Base Files for Agents
+
+Agents should parse the following additional files to gather current project knowledge:
+
+### Documentation Files
+* **`AGENTS.md`** - This file containing project information and agent instructions
+* **`README.md`** - Project overview, installation instructions, and general information
+* **`CONTRIBUTING.md`** - Comprehensive contribution guidelines and development workflow
+* **`suggestions.md`** - Detailed feature comparison between FOSSBilling and HostBill, including advanced features and implementation opportunities
+* **`improv_changelog.md`** - Documentation of recent enhancements made to the codebase
+* **`checkpoint.log`** - Detailed log of all development activities and implementation decisions
+
+### Configuration and Build Files
+* **`composer.json`** - PHP dependencies, scripts, and project metadata
+* **`package.json`** - Node.js dependencies, build scripts, and workspace configuration
+* **`phpunit.xml.dist`** - PHPUnit testing configuration
+* **`phpstan.neon`** - PHPStan static analysis configuration
+* **`.php-cs-fixer.dist.php`** - PHP-CS-Fixer coding standards configuration
+* **`rector.php`** - Rector refactoring rules configuration
+* **`src/config-sample.php`** - Sample application configuration file
+* **`src/di.php`** - Dependency injection container setup
+
+### Recent Implementation Files
+* **`src/modules/Servicedomain/Service.php`** - Enhanced domain management service with new methods for domain suggestions, bulk availability checking, WHOIS lookup, premium pricing, and advanced search
+* **`src/modules/Servicedomain/Api/Admin.php`** - Admin API with new endpoints for domain management features
+* **`src/modules/Servicedomain/Api/Client.php`** - Client API with new endpoints for domain management features
+* **`src/modules/Invoice/Service.php`** - Enhanced invoice service with new methods for late fees, dunning management, and advanced tax calculations
+* **`src/modules/Invoice/ServiceTax.php`** - Updated tax service with new method for country/state tax calculations
+* **`src/modules/Invoice/Api/Admin.php`** - Admin API with new endpoints for dunning management and late fee processing
+* **`src/modules/Invoice/pdf_template/default-pdf.twig`** - Enhanced PDF invoice template with late fee and multi-currency support
+* **`src/modules/Invoice/html_client/mod_invoice_invoice.html.twig`** - Updated client invoice view with late fee display
+* **`src/modules/Invoice/html_admin/mod_invoice_invoice.html.twig`** - Updated admin invoice view with late fee display
+* **`src/modules/Invoice/html_admin/mod_invoice_settings.html.twig`** - New invoice settings with dunning and late fee configuration options
+* **`src/modules/Invoice/html_email/mod_invoice_dunning_notice.html.twig`** - New email template for dunning notices
+* **`src/modules/Invoice/html_email/mod_invoice_final_dunning.html.twig`** - New email template for final dunning notices
+* **`src/library/Payment/Adapter/Coinbase.php`** - New payment adapter for cryptocurrency payments via Coinbase Commerce
+* **`src/library/Payment/Adapter/PayU.php`** - New payment adapter for PayU regional payments
+* **`src/library/Payment/Adapter/Razorpay.php`** - New payment adapter for Razorpay India payments
+* **`src/library/Payment/Adapter/PayPalCheckout.php`** - New payment adapter for modern PayPal payments
+* **`src/library/Payment/Adapter/Alipay.php`** - New payment adapter for Alipay China payments
+* **`src/library/Payment/Adapter/AdvancedStripe.php`** - Enhanced Stripe adapter with multiple implementation options (Payment Intents, Checkout, Sources)
+
 ## Key Files and Directories
 
 * **`README.md`:** Project overview, installation instructions, and general information
@@ -223,6 +265,9 @@ tests-legacy/                  # Legacy PHPUnit tests
 * **`rector.php`:** Rector refactoring rules configuration
 * **`src/config-sample.php`:** Sample application configuration file
 * **`src/di.php`:** Dependency injection container setup
+* **`suggestions.md`:** Feature comparison with HostBill and implementation opportunities
+* **`improv_changelog.md`:** Documentation of recent enhancements to the codebase
+* **`checkpoint.log`:** Detailed log of development activities and implementation decisions
 
 ## Additional Resources
 

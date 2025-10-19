@@ -32,6 +32,19 @@ class Client extends \Api_Abstract
             [$query, $bindings] = $this->getService()->getSearchQuery($data);
         }
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
+        
+        // Apply security validation to prevent SQL injection through ORDER BY
+        $allowedSortFields = [
+            'id', 'client_id', 'product_id', 'title', 'currency', 'service_type', 'period', 
+            'quantity', 'price', 'discount', 'status', 'reason', 'notes', 'created_at', 'updated_at'
+        ];
+        
+        // Validate and sanitize sort parameters to prevent SQL injection
+        $sort = $data['sort'] ?? null;
+        if ($sort && !in_array($sort, $allowedSortFields)) {
+            throw new \FOSSBilling\InformationException('Invalid sort field provided');
+        }
+        
         $pager = $this->di['pager']->getPaginatedResultSet($query, $bindings, $per_page);
 
         foreach ($pager['list'] as $key => $item) {
