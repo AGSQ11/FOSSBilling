@@ -10,7 +10,7 @@
  */
 
 /**
- * Client support tickets management.
+ * Support ticket management for clients.
  */
 
 namespace Box\Mod\Support\Api;
@@ -18,136 +18,172 @@ namespace Box\Mod\Support\Api;
 class Client extends \Api_Abstract
 {
     /**
-     * Get client tickets list.
+     * Get paginated list of tickets.
      *
-     * @optional string status - filter tickets by status
-     * @optional string date_from - show tickets created since this day. Can be any string parsable by strtotime()
-     * @optional string date_to - show tickets created until this day. Can be any string parsable by strtotime()
+     * @param array $data
      *
      * @return array
      */
-    public function ticket_get_list($data)
+    public function get_list($data)
     {
-        $identity = $this->getIdentity();
-        $data['client_id'] = $identity->id;
-
-        [$sql, $bindings] = $this->getService()->getSearchQuery($data);
+        $client = $this->getIdentity();
+        $data['client_id'] = $client->id;
+        
+        $service = $this->getService();
+        [$sql, $params] = $service->getSearchQuery($data);
         $per_page = $data['per_page'] ?? $this->di['pager']->getDefaultPerPage();
-        $pager = $this->di['pager']->getPaginatedResultSet($sql, $bindings, $per_page);
-        foreach ($pager['list'] as $key => $ticketArr) {
-            $ticket = $this->di['db']->getExistingModelById('SupportTicket', $ticketArr['id'], 'Ticket not found');
-            $pager['list'][$key] = $this->getService()->toApiArray($ticket, true, $this->getIdentity());
+        $pager = $this->di['pager']->getPaginatedResultSet($sql, $params, $per_page);
+        foreach ($pager['list'] as $key => $item) {
+            $model = $this->di['db']->getExistingModelById('SupportTicket', $item['id'], 'Ticket not found');
+            $pager['list'][$key] = $this->getService()->toApiArray($model, false, $this->getIdentity());
         }
 
         return $pager;
     }
 
     /**
-     * Return ticket full details.
+     * Get ticket details.
+     *
+     * @param array $data
      *
      * @return array
      */
-    public function ticket_get($data)
+    public function get($data)
     {
         $required = [
-            'id' => 'Ticket id required',
+            'id' => 'Ticket ID is required',
         ];
         $this->di['validator']->checkRequiredParamsForArray($required, $data);
 
-        $ticket = $this->getService()->findOneByClient($this->getIdentity(), $data['id']);
+        $model = $this->di['db']->getExistingModelById('SupportTicket', $data['id'], 'Ticket not found');
 
-        return $this->getService()->toApiArray($ticket);
+        return $this->getService()->toApiArray($model, true, $this->getIdentity());
     }
 
     /**
-     * Return pairs for support helpdesk. Can be used to populate select box.
+     * Create new ticket.
      *
-     * @return array
+     * @param array $data
+     *
+     * @return int - new ticket ID
      */
-    public function helpdesk_get_pairs()
-    {
-        return $this->getService()->helpdeskGetPairs();
-    }
-
-    /**
-     * Method to create open new ticket. Tickets can have tasks assigned to them
-     * via optional parameters.
-     *
-     * @optional int $rel_type - Ticket relation type
-     * @optional int $rel_id - Ticket relation id
-     * @optional int $rel_task - Ticket task codename
-     * @optional int $rel_new_value - Task can have new value assigned.
-     *
-     * @return int $id - ticket id
-     */
-    public function ticket_create($data)
+    public function create($data)
     {
         $required = [
-            'content' => 'Ticket content required',
-            'subject' => 'Ticket subject required',
-            'support_helpdesk_id' => 'Ticket support_helpdesk_id required',
+            'support_helpdesk_id' => 'Helpdesk ID is required',
+            'subject' => 'Subject is required',
+            'content' => 'Message content is required',
         ];
         $this->di['validator']->checkRequiredParamsForArray($required, $data);
-
-        $data['content'] = preg_replace('/javascript:\/\/|\%0(d|a)/i', '', (string) $data['content']);
-
-        $helpdesk = $this->di['db']->getExistingModelById('SupportHelpdesk', $data['support_helpdesk_id'], 'Helpdesk invalid');
 
         $client = $this->getIdentity();
+        $data['client_id'] = $client->id;
 
-        return $this->getService()->ticketCreateForClient($client, $helpdesk, $data);
+        return $this->getService()->createTicket($data);
     }
 
     /**
-     * Add new conversation message to ticket. Ticket will be reopened if closed.
+     * Add message to ticket.
+     *
+     * @param array $data
+     *
+     * @return int - message ID
      */
-    public function ticket_reply($data): bool
+    public function add_message($data)
     {
         $required = [
-            'id' => 'Ticket ID required',
-            'content' => 'Ticket content required',
+            'id' => 'Ticket ID is required',
+            'content' => 'Message content is required',
         ];
         $this->di['validator']->checkRequiredParamsForArray($required, $data);
 
-        $data['content'] = preg_replace('/javascript:\/\/|\%0(d|a)/i', '', (string) $data['content']);
+        $model = $this->di['db']->getExistingModelById('SupportTicket', $data['id'], 'Ticket not found');
+        $data['client_id'] = $this->getIdentity()->id;
 
-        $client = $this->getIdentity();
-
-        $bindings = [
-            ':id' => $data['id'],
-            ':client_id' => $client->id,
-        ];
-        $ticket = $this->di['db']->findOne('SupportTicket', 'id = :id AND client_id = :client_id', $bindings);
-
-        if (!$ticket instanceof \Model_SupportTicket) {
-            throw new \FOSSBilling\InformationException('Ticket not found');
-        }
-
-        if (!$this->getService()->canBeReopened($ticket)) {
-            throw new \FOSSBilling\InformationException('Ticket cannot be reopened.');
-        }
-
-        $result = $this->getService()->ticketReply($ticket, $client, $data['content']);
-
-        return ($result > 0) ? true : false;
+        return $this->getService()->addMessage($model, $data);
     }
 
     /**
      * Close ticket.
      *
+     * @param array $data
+     *
      * @return bool
      */
-    public function ticket_close($data)
+    public function close($data)
     {
         $required = [
-            'id' => 'Ticket ID required',
+            'id' => 'Ticket ID is required',
         ];
         $this->di['validator']->checkRequiredParamsForArray($required, $data);
 
-        $client = $this->getIdentity();
+        $model = $this->di['db']->getExistingModelById('SupportTicket', $data['id'], 'Ticket not found');
 
-        $ticket = $this->getService()->findOneByClient($client, $data['id']);
+        return $this->getService()->closeTicket($model);
+    }
 
-        return $this->getService()->closeTicket($ticket, $this->getIdentity());
+    /**
+     * Get knowledge base categories.
+     *
+     * @param array $data
+     *
+     * @return array
+     */
+    public function get_kb_categories($data)
+    {
+        return $this->di['api_admin']->support_get_kb_categories($data);
+    }
+
+    /**
+     * Get knowledge base articles.
+     *
+     * @param array $data
+     *
+     * @return array
+     */
+    public function get_kb_articles($data)
+    {
+        return $this->di['api_admin']->support_get_kb_articles($data);
+    }
+
+    /**
+     * Get knowledge base article.
+     *
+     * @param array $data
+     *
+     * @return array
+     */
+    public function get_kb_article($data)
+    {
+        return $this->di['api_admin']->support_get_kb_article($data);
+    }
+
+    /**
+     * Submit knowledge base article feedback.
+     *
+     * @param array $data
+     *
+     * @return bool
+     */
+    public function submit_kb_article_feedback($data)
+    {
+        $required = [
+            'article_id' => 'Article ID is required',
+            'is_helpful' => 'Feedback is required',
+        ];
+        $this->di['validator']->checkRequiredParamsForArray($required, $data);
+
+        $article = $this->di['db']->getExistingModelById('SupportKbArticle', $data['article_id'], 'Article not found');
+        
+        $feedback = $this->di['db']->dispense('SupportKbArticleFeedback');
+        $feedback->article_id = $article->id;
+        $feedback->client_id = $this->getIdentity()->id;
+        $feedback->is_helpful = $data['is_helpful'];
+        $feedback->comments = $data['comments'] ?? null;
+        $feedback->ip_address = $this->di['request']->getClientAddress();
+        $feedback->created_at = date('Y-m-d H:i:s');
+        $this->di['db']->store($feedback);
+
+        return true;
     }
 }

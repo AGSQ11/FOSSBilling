@@ -9,6 +9,7 @@
     "build-modules": "npm run build-wysiwyg",
     "build-huraga": "npm run build -w huraga",
     "build-admin_default": "npm run build -w admin_default",
+    "build-apollo": "npm run build -w apollo",
     "build-wysiwyg": "npm run build -w wysiwyg",
     "cypress:open": "cypress open"
   },
@@ -27,22 +28,24 @@
   },
   "devDependencies": {
     "@symfony/webpack-encore": "5.2.0",
-    "autoprefixer": "10.4.21",
+    "autoprefixer": "^10.4.21",
     "core-js": "3.46.0",
     "cypress": "15.4.0",
-    "postcss": "8.5.6",
+    "postcss": "^8.5.6",
     "postcss-loader": "8.2.0",
     "sass": "1.93.2",
     "sass-embedded": "1.93.2",
     "sass-loader": "16.0.5",
     "svg-sprite-loader": "6.0.11",
     "svgo-loader": "4.0.0",
+    "tailwindcss": "^4.1.14",
     "webpack": "5.102.1",
     "webpack-cli": "6.0.1"
   },
   "workspaces": [
     "src/themes/huraga",
     "src/themes/admin_default",
+    "src/themes/apollo",
     "src/modules/Wysiwyg"
   ],
   "config": {
