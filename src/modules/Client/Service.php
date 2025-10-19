@@ -725,3 +725,404 @@ class Service implements InjectionAwareInterface
         }
     }
 }
+
+
+    /**
+     * Add client tags for segmentation and categorization
+     */
+    public function addClientTags($client, $tags): bool
+    {
+        $model = $this->di['db']->getExistingModelById('Client', $client, 'Client not found');
+        
+        // Get existing tags
+        $existingTags = $this->getClientTags($model);
+        $allTags = array_unique(array_merge($existingTags, is_array($tags) ? $tags : [$tags]));
+        
+        // Update client tags
+        $model->tags = json_encode($allTags);
+        $model->updated_at = date('Y-m-d H:i:s');
+        $this->di['db']->store($model);
+        
+        $this->di['logger']->info('Added tags to client #%s', $model->id);
+        
+        return true;
+    }
+
+    /**
+     * Remove client tags
+     */
+    public function removeClientTags($client, $tags): bool
+    {
+        $model = $this->di['db']->getExistingModelById('Client', $client, 'Client not found');
+        
+        // Get existing tags
+        $existingTags = $this->getClientTags($model);
+        $tagsToRemove = is_array($tags) ? $tags : [$tags];
+        
+        // Remove specified tags
+        $filteredTags = array_values(array_diff($existingTags, $tagsToRemove));
+        
+        // Update client tags
+        $model->tags = json_encode($filteredTags);
+        $model->updated_at = date('Y-m-d H:i:s');
+        $this->di['db']->store($model);
+        
+        $this->di['logger']->info('Removed tags from client #%s', $model->id);
+        
+        return true;
+    }
+
+    /**
+     * Get client tags
+     */
+    public function getClientTags($client): array
+    {
+        $model = $this->di['db']->getExistingModelById('Client', $client, 'Client not found');
+        
+        $tags = json_decode($model->tags ?? '[]', true);
+        return is_array($tags) ? $tags : [];
+    }
+
+    /**
+     * Get clients by tags for segmentation
+     */
+    public function getClientsByTags(array $tags, array $params = []): array
+    {
+        $sql = 'SELECT c.* FROM client c WHERE 1=1';
+        $bindings = [];
+        
+        if (!empty($tags)) {
+            $tagConditions = [];
+            foreach ($tags as $tag) {
+                $tagConditions[] = 'JSON_CONTAINS(tags, :tag' . count($tagConditions) . ')';
+                $bindings[':tag' . count($tagConditions)] = json_encode($tag);
+            }
+            $sql .= ' AND (' . implode(' OR ', $tagConditions) . ')';
+        }
+        
+        $limit = $params['per_page'] ?? 50;
+        $page = $params['page'] ?? 1;
+        $offset = ($page - 1) * $limit;
+        
+        $sql .= ' LIMIT :limit OFFSET :offset';
+        $bindings[':limit'] = $limit;
+        $bindings[':offset'] = $offset;
+        
+        $stmt = $this->di['pdo']->prepare($sql);
+        $stmt->execute($bindings);
+        
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Get client communication history
+     */
+    public function getClientCommunicationHistory($client): array
+    {
+        $model = $this->di['db']->getExistingModelById('Client', $client, 'Client not found');
+        
+        // Get all related communications: emails, tickets, notes
+        $communications = [];
+        
+        // Get sent emails
+        $emailSql = "
+            SELECT 
+                'email' as type,
+                subject as title,
+                content,
+                created_at as date,
+                'sent' as direction
+            FROM email_queue
+            WHERE client_id = :client_id
+            ORDER BY created_at DESC
+            LIMIT 50
+        ";
+        
+        $stmt = $this->di['pdo']->prepare($emailSql);
+        $stmt->execute([':client_id' => $model->id]);
+        $emails = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        // Get tickets
+        $ticketSql = "
+            SELECT 
+                'ticket' as type,
+                subject as title,
+                message as content,
+                created_at as date,
+                'received' as direction
+            FROM support_ticket
+            WHERE client_id = :client_id
+            ORDER BY created_at DESC
+            LIMIT 50
+        ";
+        
+        $stmt = $this->di['pdo']->prepare($ticketSql);
+        $stmt->execute([':client_id' => $model->id]);
+        $tickets = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        // Get client notes
+        $noteSql = "
+            SELECT 
+                'note' as type,
+                'Client Note' as title,
+                note as content,
+                created_at as date,
+                'internal' as direction
+            FROM client_note
+            WHERE client_id = :client_id
+            ORDER BY created_at DESC
+            LIMIT 50
+        ";
+        
+        $stmt = $this->di['pdo']->prepare($noteSql);
+        $stmt->execute([':client_id' => $model->id]);
+        $notes = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        // Combine and sort all communications
+        $communications = array_merge($emails, $tickets, $notes);
+        usort($communications, function($a, $b) {
+            return strtotime($b['date']) - strtotime($a['date']);
+        });
+        
+        return array_slice($communications, 0, 50);
+    }
+
+    /**
+     * Create client credit account
+     */
+    public function createClientCreditAccount($client, float $initial_amount = 0.0, string $currency = null): bool
+    {
+        $model = $this->di['db']->getExistingModelById('Client', $client, 'Client not found');
+        
+        if (!$currency) {
+            $currency = $model->currency;
+        }
+        
+        // Check if credit account already exists
+        $existingCredit = $this->di['db']->findOne('ClientBalance', 'client_id = :client_id AND type = :type', [
+            ':client_id' => $model->id,
+            ':type' => 'credit_account'
+        ]);
+        
+        if ($existingCredit) {
+            throw new \FOSSBilling\InformationException('Credit account already exists for this client');
+        }
+        
+        // Create credit account with initial balance
+        $creditAccount = $this->di['db']->dispense('ClientBalance');
+        $creditAccount->client_id = $model->id;
+        $creditAccount->type = 'credit_account';
+        $creditAccount->rel_id = null;
+        $creditAccount->description = 'Client credit account';
+        $creditAccount->amount = $initial_amount;
+        $creditAccount->created_at = date('Y-m-d H:i:s');
+        $creditAccount->updated_at = date('Y-m-d H:i:s');
+        
+        $this->di['db']->store($creditAccount);
+        
+        $this->di['logger']->info('Created credit account for client #%s with initial amount %s', $model->id, $initial_amount);
+        
+        return true;
+    }
+
+    /**
+     * Add funds to client credit account
+     */
+    public function addCreditToAccount($client, float $amount, string $description = null): bool
+    {
+        $model = $this->di['db']->getExistingModelById('Client', $client, 'Client not found');
+        
+        if ($amount <= 0) {
+            throw new \FOSSBilling\InformationException('Amount must be greater than 0');
+        }
+        
+        // Find credit account
+        $creditAccount = $this->di['db']->findOne('ClientBalance', 'client_id = :client_id AND type = :type', [
+            ':client_id' => $model->id,
+            ':type' => 'credit_account'
+        ]);
+        
+        if (!$creditAccount) {
+            throw new \FOSSBilling\InformationException('Credit account does not exist for this client');
+        }
+        
+        // Update credit account balance
+        $creditAccount->amount += $amount;
+        $creditAccount->updated_at = date('Y-m-d H:i:s');
+        $this->di['db']->store($creditAccount);
+        
+        // Create transaction record
+        $transaction = $this->di['db']->dispense('ClientBalance');
+        $transaction->client_id = $model->id;
+        $transaction->type = 'credit_addition';
+        $transaction->rel_id = $creditAccount->id;
+        $transaction->description = $description ?: 'Added credit to account';
+        $transaction->amount = $amount;
+        $transaction->created_at = date('Y-m-d H:i:s');
+        $transaction->updated_at = date('Y-m-d H:i:s');
+        $this->di['db']->store($transaction);
+        
+        $this->di['logger']->info('Added %s credit to client #%s account', $amount, $model->id);
+        
+        return true;
+    }
+
+    /**
+     * Deduct funds from client credit account
+     */
+    public function deductCreditFromAccount($client, float $amount, string $description = null): bool
+    {
+        $model = $this->di['db']->getExistingModelById('Client', $client, 'Client not found');
+        
+        if ($amount <= 0) {
+            throw new \FOSSBilling\InformationException('Amount must be greater than 0');
+        }
+        
+        // Find credit account
+        $creditAccount = $this->di['db']->findOne('ClientBalance', 'client_id = :client_id AND type = :type', [
+            ':client_id' => $model->id,
+            ':type' => 'credit_account'
+        ]);
+        
+        if (!$creditAccount) {
+            throw new \FOSSBilling\InformationException('Credit account does not exist for this client');
+        }
+        
+        // Check if sufficient funds
+        if ($creditAccount->amount < $amount) {
+            throw new \FOSSBilling\InformationException('Insufficient credit in account');
+        }
+        
+        // Update credit account balance
+        $creditAccount->amount -= $amount;
+        $creditAccount->updated_at = date('Y-m-d H:i:s');
+        $this->di['db']->store($creditAccount);
+        
+        // Create transaction record
+        $transaction = $this->di['db']->dispense('ClientBalance');
+        $transaction->client_id = $model->id;
+        $transaction->type = 'credit_deduction';
+        $transaction->rel_id = $creditAccount->id;
+        $transaction->description = $description ?: 'Deducted credit from account';
+        $transaction->amount = -$amount;
+        $transaction->created_at = date('Y-m-d H:i:s');
+        $transaction->updated_at = date('Y-m-d H:i:s');
+        $this->di['db']->store($transaction);
+        
+        $this->di['logger']->info('Deducted %s credit from client #%s account', $amount, $model->id);
+        
+        return true;
+    }
+
+    /**
+     * Get client credit account balance
+     */
+    public function getClientCreditBalance($client): float
+    {
+        $model = $this->di['db']->getExistingModelById('Client', $client, 'Client not found');
+        
+        // Find credit account
+        $creditAccount = $this->di['db']->findOne('ClientBalance', 'client_id = :client_id AND type = :type', [
+            ':client_id' => $model->id,
+            ':type' => 'credit_account'
+        ]);
+        
+        return $creditAccount ? $creditAccount->amount : 0.0;
+    }
+
+    /**
+     * Get client segmentation analytics
+     */
+    public function getClientSegmentationAnalytics(): array
+    {
+        $pdo = $this->di['pdo'];
+        
+        // Get clients by country
+        $countryQuery = "
+            SELECT 
+                country,
+                COUNT(id) as client_count,
+                SUM(cb.amount) as total_client_value
+            FROM client c
+            LEFT JOIN (
+                SELECT client_id, SUM(amount) as amount
+                FROM client_balance
+                WHERE type = 'credit_account'
+                GROUP BY client_id
+            ) cb ON c.id = cb.client_id
+            GROUP BY country
+            ORDER BY client_count DESC
+            LIMIT 10
+        ";
+        
+        $stmt = $pdo->prepare($countryQuery);
+        $stmt->execute();
+        $byCountry = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        // Get clients by group
+        $groupQuery = "
+            SELECT 
+                cg.title as group_name,
+                COUNT(c.id) as client_count,
+                AVG(invoice_total.total) as avg_revenue_per_client
+            FROM client c
+            LEFT JOIN client_group cg ON c.client_group_id = cg.id
+            LEFT JOIN (
+                SELECT 
+                    client_id, 
+                    SUM(total) as total
+                FROM invoice 
+                WHERE status = 'paid'
+                GROUP BY client_id
+            ) invoice_total ON c.id = invoice_total.client_id
+            GROUP BY c.client_group_id
+            ORDER BY client_count DESC
+        ";
+        
+        $stmt = $pdo->prepare($groupQuery);
+        $stmt->execute();
+        $byGroup = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        // Get clients by registration period
+        $periodQuery = "
+            SELECT 
+                DATE_FORMAT(created_at, '%Y-%m') as registration_period,
+                COUNT(id) as new_clients
+            FROM client
+            GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+            ORDER BY registration_period DESC
+            LIMIT 12
+        ";
+        
+        $stmt = $pdo->prepare($periodQuery);
+        $stmt->execute();
+        $byPeriod = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        // Get clients by tags
+        $tagQuery = "
+            SELECT 
+                JSON_UNQUOTE(JSON_EXTRACT(tags, CONCAT('$[', n.n, ']'))) as tag,
+                COUNT(*) as client_count
+            FROM client
+            CROSS JOIN (
+                SELECT 0 as n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4
+                UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9
+            ) n
+            WHERE JSON_EXTRACT(tags, CONCAT('$[', n.n, ']')) IS NOT NULL
+            GROUP BY tag
+            ORDER BY client_count DESC
+            LIMIT 10
+        ";
+        
+        $stmt = $pdo->prepare($tagQuery);
+        $stmt->execute();
+        $byTags = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        return [
+            'by_country' => $byCountry,
+            'by_group' => $byGroup,
+            'by_period' => $byPeriod,
+            'by_tags' => $byTags,
+        ];
+    }
+}

@@ -63,6 +63,21 @@ For instructions on installing FOSSBilling, check out our [getting started guide
 
 ## Recent Enhancements
 
+### Business Intelligence and Analytics System
+FOSSBilling now includes a comprehensive business intelligence dashboard with advanced analytics:
+- **Revenue Analytics**: Trend analysis, MRR calculation, and growth rate tracking
+- **Client Analytics**: Segmentation, churn rate tracking, and customer lifetime value calculations
+- **Order Analytics**: Product performance insights and order tracking
+- **Support Analytics**: Ticket volume and resolution time analysis
+- **Custom Reports**: Flexible reporting capabilities with export options
+
+### Enhanced Client Management Features
+FOSSBilling's client management has been significantly enhanced with:
+- **Client Tagging**: Advanced segmentation with tag-based filtering
+- **Communication History**: Centralized view of all client communications
+- **Credit Account Management**: Prepaid credit accounts with balance tracking
+- **Advanced Segmentation**: Multi-dimensional client analytics and targeting
+
 ### Payment Gateway System Improvements
 FOSSBilling's payment gateway system has been significantly expanded with several new adapters:
 - **Advanced Stripe Implementation**: Multiple Stripe implementations (Payment Intents, Checkout Sessions, Sources API)

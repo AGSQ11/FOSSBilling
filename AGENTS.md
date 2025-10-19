@@ -219,7 +219,7 @@ Agents should parse the following additional files to gather current project kno
 * **`AGENTS.md`** - This file containing project information and agent instructions
 * **`README.md`** - Project overview, installation instructions, and general information
 * **`CONTRIBUTING.md`** - Comprehensive contribution guidelines and development workflow
-* **`suggestions.md`** - Detailed feature comparison between FOSSBilling and HostBill, including advanced features and implementation opportunities
+* **`suggestions.md`** - Detailed feature comparison for FOSSBilling enhancement opportunities, including advanced features and implementation opportunities
 * **`improv_changelog.md`** - Documentation of recent enhancements made to the codebase
 * **`checkpoint.log`** - Detailed log of all development activities and implementation decisions
 
@@ -246,6 +246,9 @@ Agents should parse the following additional files to gather current project kno
 * **`src/modules/Invoice/html_admin/mod_invoice_settings.html.twig`** - New invoice settings with dunning and late fee configuration options
 * **`src/modules/Invoice/html_email/mod_invoice_dunning_notice.html.twig`** - New email template for dunning notices
 * **`src/modules/Invoice/html_email/mod_invoice_final_dunning.html.twig`** - New email template for final dunning notices
+* **`src/modules/Reports/Service.php`** - New Reports module with comprehensive business intelligence dashboard, revenue analytics, client analytics, order analytics, and support analytics
+* **`src/modules/Reports/Api/Admin.php`** - Admin API for the Reports module with endpoints for business intelligence, revenue, client, order, and support analytics
+* **`src/modules/Client/Service.php`** - Enhanced client management with tagging, communication history, credit account management, and segmentation analytics
 * **`src/library/Payment/Adapter/Coinbase.php`** - New payment adapter for cryptocurrency payments via Coinbase Commerce
 * **`src/library/Payment/Adapter/PayU.php`** - New payment adapter for PayU regional payments
 * **`src/library/Payment/Adapter/Razorpay.php`** - New payment adapter for Razorpay India payments
@@ -265,7 +268,7 @@ Agents should parse the following additional files to gather current project kno
 * **`rector.php`:** Rector refactoring rules configuration
 * **`src/config-sample.php`:** Sample application configuration file
 * **`src/di.php`:** Dependency injection container setup
-* **`suggestions.md`:** Feature comparison with HostBill and implementation opportunities
+* **`suggestions.md`:** Feature comparison and implementation opportunities
 * **`improv_changelog.md`:** Documentation of recent enhancements to the codebase
 * **`checkpoint.log`:** Detailed log of development activities and implementation decisions
 

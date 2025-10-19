@@ -1,0 +1,2 @@
+-- Migration to add tags column to client table for enhanced client management
+ALTER TABLE `client` ADD COLUMN `tags` TEXT NULL DEFAULT NULL COMMENT 'JSON array of client tags for segmentation' AFTER `notes`;
