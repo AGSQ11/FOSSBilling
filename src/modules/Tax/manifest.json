@@ -1,0 +1,7 @@
+{
+    "id": "tax",
+    "type": "mod",
+    "name": "Tax",
+    "description": "Advanced tax management system",
+    "version": "1.0.0"
+}

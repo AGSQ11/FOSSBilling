@@ -1,0 +1,7 @@
+{
+    "id": "coupon",
+    "type": "mod",
+    "name": "Coupon",
+    "description": "Advanced coupon and promotion management system",
+    "version": "1.0.0"
+}

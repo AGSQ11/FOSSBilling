@@ -334,7 +334,35 @@ class ServicePayGateway implements InjectionAwareInterface
             return [];
         }
 
-        return call_user_func([$class, 'getConfig']);
+        $config = call_user_func([$class, 'getConfig']);
+        
+        // Add enhanced gateway features to config
+        $config['gateway_type'] = $pg->gateway_type ?? 'standard';
+        $config['supported_features'] = json_decode($pg->supported_features ?? '[]', true);
+        $config['supported_currencies'] = json_decode($pg->supported_currencies ?? '[]', true);
+        $config['supported_countries'] = json_decode($pg->supported_countries ?? '[]', true);
+        $config['min_amount'] = $pg->min_amount ?? 0.00;
+        $config['max_amount'] = $pg->max_amount ?? 0.00;
+        $config['fee_fixed'] = $pg->fee_fixed ?? 0.00;
+        $config['fee_percent'] = $pg->fee_percent ?? 0.00;
+        $config['sandbox_url'] = $pg->sandbox_url ?? null;
+        $config['production_url'] = $pg->production_url ?? null;
+        $config['webhook_url'] = $pg->webhook_url ?? null;
+        $config['redirect_url'] = $pg->redirect_url ?? null;
+        $config['cancel_url'] = $pg->cancel_url ?? null;
+        $config['supported_payment_methods'] = json_decode($pg->supported_payment_methods ?? '[]', true);
+        $config['recurring_supported'] = $pg->recurring_supported ?? 0;
+        $config['refund_supported'] = $pg->refund_supported ?? 0;
+        $config['instant_payout'] = $pg->instant_payout ?? 0;
+        $config['mobile_optimized'] = $pg->mobile_optimized ?? 0;
+        $config['iframe_supported'] = $pg->iframe_supported ?? 0;
+        $config['checkout_flow'] = $pg->checkout_flow ?? 'redirect';
+        $config['authentication_type'] = $pg->authentication_type ?? 'api_key';
+        $config['region'] = $pg->region ?? null;
+        $config['priority'] = $pg->priority ?? 0;
+        $config['weight'] = $pg->weight ?? 0;
+
+        return $config;
     }
 
     public function getAdapterClassName(\Model_PayGateway $pg): string
